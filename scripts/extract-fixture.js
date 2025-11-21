@@ -5,21 +5,9 @@ const path = require("path");
 const { execSync } = require("child_process");
 
 /**
- * Extract HTML from markdown file (between ```html tags)
- */
-function extractHtmlFromMarkdown(markdownPath) {
-  const content = fs.readFileSync(markdownPath, "utf-8");
-  const htmlMatch = content.match(/```html\n([\s\S]*?)\n```/);
-  if (!htmlMatch) {
-    throw new Error(`No HTML block found in ${markdownPath}`);
-  }
-  return htmlMatch[1];
-}
-
-/**
  * Extract minimal HTML keeping the hierarchy that leads to attendance table
  */
-function extractMinimalHtml(html) {
+function extractMinimalAttendanceHtml(html) {
   const root = parse(html);
   
   // Find the main container that holds the attendance content
@@ -154,10 +142,60 @@ function extractMinimalHtml(html) {
 }
 
 /**
+ * Extract minimal modify page HTML keeping only the form structure
+ */
+function extractMinimalModifyHtml(html) {
+  const root = parse(html);
+
+  // Find the form
+  const form = root.querySelector("form");
+  if (!form) {
+    throw new Error("No form element found in HTML");
+  }
+
+  // Keep only essential form fields: token, client_id, employee_id, group_id, notice, time
+  const fieldsToKeep = ["token", "client_id", "employee_id", "group_id", "notice", "time"];
+  const allInputs = form.querySelectorAll("input, select, textarea");
+  
+  allInputs.forEach((input) => {
+    const name = input.getAttribute("name");
+    if (!name || !fieldsToKeep.includes(name)) {
+      input.remove();
+    }
+  });
+
+  // Remove all scripts
+  const scripts = form.querySelectorAll("script");
+  scripts.forEach((script) => script.remove());
+
+  // Remove all labels that don't have a corresponding input
+  const labels = form.querySelectorAll("label");
+  labels.forEach((label) => {
+    const forAttr = label.getAttribute("for");
+    if (forAttr && !form.querySelector(`#${forAttr}`)) {
+      label.remove();
+    }
+  });
+
+  // Create minimal HTML document
+  const minimalHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Modify Attendance</title>
+</head>
+<body>
+  ${form.outerHTML}
+</body>
+</html>`;
+
+  return minimalHtml;
+}
+
+/**
  * Main function
  */
 function main() {
-  const sandboxDir = path.join(__dirname, "..", "sandbox");
+  const sandboxFixturesDir = path.join(__dirname, "..", "sandbox", "fixtures");
   const testFixturesDir = path.join(__dirname, "..", "test", "fixtures");
 
   // Ensure test/fixtures directory exists
@@ -166,17 +204,48 @@ function main() {
   }
 
   const files = [
-    { input: "attendance-previous.md", output: "attendance-previous.html" },
-    { input: "attendance-current.md", output: "attendance-current.html" },
+    { 
+      input: "attendance-previous.html", 
+      output: "attendance-previous.html",
+      type: "attendance"
+    },
+    { 
+      input: "attendance-current.html", 
+      output: "attendance-current.html",
+      type: "attendance"
+    },
+    { 
+      input: "modify-page.html", 
+      output: "modify-page.html",
+      type: "modify"
+    },
   ];
 
   for (const file of files) {
-    const inputPath = path.join(sandboxDir, file.input);
+    const inputPath = path.join(
+      file.type === "modify" ? testFixturesDir : sandboxFixturesDir,
+      file.input
+    );
     const outputPath = path.join(testFixturesDir, file.output);
 
+    // Skip if input file doesn't exist
+    if (!fs.existsSync(inputPath)) {
+      console.log(`Skipping ${file.input} - file not found at ${inputPath}`);
+      continue;
+    }
+
     console.log(`Processing ${file.input}...`);
-    const html = extractHtmlFromMarkdown(inputPath);
-    const minimalHtml = extractMinimalHtml(html);
+    const html = fs.readFileSync(inputPath, "utf-8");
+    
+    let minimalHtml;
+    if (file.type === "attendance") {
+      minimalHtml = extractMinimalAttendanceHtml(html);
+    } else if (file.type === "modify") {
+      minimalHtml = extractMinimalModifyHtml(html);
+    } else {
+      throw new Error(`Unknown file type: ${file.type}`);
+    }
+    
     fs.writeFileSync(outputPath, minimalHtml, "utf-8");
     
     // Format with prettier
@@ -194,4 +263,3 @@ function main() {
 }
 
 main();
-

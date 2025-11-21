@@ -24,12 +24,14 @@ export interface AttendanceEntryRaw {
   break?: string; // e.g., "01:00"
   status: string[]; // e.g., ["A"] for Absence, ["L"] for Late, ["PV"] for Paid Vacation
   statusTooltip?: string; // Tooltip text for status
+  isPending?: boolean; // Row has class 'jbc-table-warning' (clock-in/out pending approval)
 }
 
 /**
  * Attendance status enum for processed entries
  */
 export enum AttendanceStatus {
+  Pending = "pending", // Pending (table row has class 'jbc-table-warning')
   Logged = "logged", // Fully logged with clock-in, clock-out, and working hours
   HolidayWork = "holiday_work", // Worked on a holiday
   Absence = "absence", // Absent (status: A)
@@ -68,6 +70,32 @@ export interface AttendanceResponse {
   month: number;
 }
 
+// Clocking Types
+
+/**
+ * Clock field definition (re-exported from clock-fields.ts for convenience)
+ */
+export type { ClockField } from "./clock-fields";
+
+/**
+ * Data extracted from the modify page
+ */
+export interface ModifyPageData {
+  token: string;
+  clientId: string;
+  employeeId: string;
+  availableSpots: Array<{ id: string; name: string }>;
+  formFields: ClockField[]; // Form fields detected from the modify page
+}
+
+/**
+ * Result of clocking validation
+ */
+export interface ClockingValidation {
+  supported: boolean;
+  missingFields: string[];
+}
+
 /**
  * Transform raw attendance entry to processed entry for UI
  */
@@ -78,7 +106,10 @@ export function transformAttendanceEntry(raw: AttendanceEntryRaw): AttendanceEnt
   // Determine primary status
   let status: AttendanceStatus;
 
-  if (isHoliday && isLogged) {
+  // Check for pending status first (highest priority)
+  if (raw.isPending) {
+    status = AttendanceStatus.Pending;
+  } else if (isHoliday && isLogged) {
     status = AttendanceStatus.HolidayWork;
   } else if (isLogged) {
     status = AttendanceStatus.Logged;

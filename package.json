@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "jobcan",
   "title": "Jobcan",
-  "description": "Japanese attendance management made easy straight from Raycast",
+  "description": "Countering bad ux/ui of Jobcan, a Japanese attendance management system, by using Raycast in a fun way",
   "icon": "jobcan-icon.png",
   "author": "clins1994",
   "platforms": [
@@ -61,7 +61,7 @@
       "name": "gridColumns",
       "type": "dropdown",
       "required": true,
-      "default": "4",
+      "default": "8",
       "title": "Grid Columns",
       "description": "Number of columns in grid view (more columns = smaller items)",
       "data": [
@@ -106,6 +106,28 @@
         {
           "value": "previous",
           "title": "Previous Month"
+        }
+      ]
+    },
+    {
+      "name": "iconPack",
+      "type": "dropdown",
+      "required": true,
+      "default": "gif",
+      "title": "Icon Pack",
+      "description": "Choose the icon pack to use for attendance status indicators",
+      "data": [
+        {
+          "value": "raycast",
+          "title": "Raycast Icons"
+        },
+        {
+          "value": "pduck",
+          "title": "PDuck"
+        },
+        {
+          "value": "gif",
+          "title": "GIF"
         }
       ]
     }

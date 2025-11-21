@@ -112,6 +112,17 @@ test("Substitution holiday (10/31 with 'SH' status)", () => {
   assert.ok(entry1031.statusTooltip?.includes("代休"), "Tooltip should mention substitution holiday");
 });
 
+test("Pending row (11/01 with jbc-table-warning class)", () => {
+  const html = loadFixture("attendance-current");
+  const result = parseAttendanceHtml(html, 2025, 11);
+  
+  const entry1101 = result.entries.find((e) => e.date === "2025-11-01");
+  
+  assert.ok(entry1101, "Should find entry for 11/01");
+  assert.strictEqual(entry1101.status, "pending", "Status should be pending");
+  assert.strictEqual(entry1101.holidayType, "National", "Should be a National holiday");
+});
+
 test("Unrecognized attendance patterns are logged", async () => {
   const originalDebug = console.debug;
   const debugCalls: unknown[] = [];

@@ -202,7 +202,6 @@ export async function login(email: string, password: string): Promise<string> {
   console.debug("[Auth] Starting login flow...");
   // Step 1: Get login page to extract CSRF token
   const loginPageUrl = `${ID_BASE_URL}/users/sign_in`;
-  console.debug(`[Auth] Step 1: Fetching login page: ${loginPageUrl}`);
   const loginPageResponse = await fetch(loginPageUrl, {
     method: "GET",
     headers: {
@@ -219,18 +218,14 @@ export async function login(email: string, password: string): Promise<string> {
 
   const loginPageHtml = await loginPageResponse.text();
   const authenticityToken = extractAuthenticityToken(loginPageHtml);
-  console.debug(`[Auth] Extracted authenticity token: ${authenticityToken ? authenticityToken.substring(0, 10) + "..." : "FAILED"}`);
-
   if (!authenticityToken) {
     throw new Error("Failed to extract CSRF token from login page");
   }
 
   // Extract cookies from the response for session management
   const loginPageCookies = mergeCookies(loginPageResponse.headers.get("set-cookie"));
-  console.debug(`[Auth] Login page cookies: ${loginPageCookies.substring(0, 50)}...`);
 
   // Step 2: POST login credentials
-  console.debug(`[Auth] Step 2: POSTing login credentials...`);
   const loginFormData = new URLSearchParams({
     authenticity_token: authenticityToken,
     "user[email]": email,
@@ -257,13 +252,8 @@ export async function login(email: string, password: string): Promise<string> {
     body: loginFormData.toString(),
   });
 
-  console.debug(`[Auth] Login POST response status: ${loginResponse.status}`);
-  const location = loginResponse.headers.get("location");
-  console.debug(`[Auth] Login POST redirect location: ${location || "none"}`);
-
   // Get updated cookies from login response
   const loginCookies = mergeCookies(loginPageCookies, loginResponse.headers.get("set-cookie"));
-  console.debug(`[Auth] Login cookies after POST: ${loginCookies.substring(0, 50)}...`);
 
   // Check if login was successful (should redirect or return 200)
   if (loginResponse.status !== 302 && loginResponse.status !== 200) {
@@ -275,7 +265,6 @@ export async function login(email: string, password: string): Promise<string> {
   }
 
   // Step 3: Get authorization code via OAuth authorize endpoint
-  console.debug(`[Auth] Step 3: Getting authorization code...`);
   const authorizeParams = new URLSearchParams({
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
@@ -284,7 +273,6 @@ export async function login(email: string, password: string): Promise<string> {
   });
 
   const authorizeUrl = `${ID_BASE_URL}/oauth/authorize?${authorizeParams.toString()}`;
-  console.debug(`[Auth] Authorize URL: ${authorizeUrl}`);
   const authorizeResponse = await fetch(authorizeUrl, {
     method: "GET",
     headers: {
@@ -298,28 +286,22 @@ export async function login(email: string, password: string): Promise<string> {
     redirect: "manual",
   });
 
-  console.debug(`[Auth] Authorize response status: ${authorizeResponse.status}`);
   // The authorize endpoint should redirect to callback with code
   const authorizeLocation = authorizeResponse.headers.get("location");
-  console.debug(`[Auth] Authorize redirect location: ${authorizeLocation || "none"}`);
   if (!authorizeLocation) {
     throw new Error("Authorization failed: No redirect location received");
   }
 
   // Extract authorization code from redirect URL
   const code = extractCodeFromUrl(authorizeLocation);
-  console.debug(`[Auth] Extracted authorization code: ${code ? code.substring(0, 10) + "..." : "FAILED"}`);
   if (!code) {
     throw new Error(`Failed to extract authorization code from redirect: ${authorizeLocation}`);
   }
 
   // Step 4: Get callback to establish session cookies
-  console.debug(`[Auth] Step 4: Getting callback to establish session...`);
   const callbackUrl = `${SSL_BASE_URL}/jbcoauth/callback?code=${code}`;
-  console.debug(`[Auth] Callback URL: ${callbackUrl}`);
   const callbackCookies = mergeCookies(loginCookies, authorizeResponse.headers.get("set-cookie"));
-  console.debug(`[Auth] Callback cookies: ${callbackCookies.substring(0, 50)}...`);
-  
+
   const callbackResponse = await fetch(callbackUrl, {
     method: "GET",
     headers: {
@@ -333,20 +315,16 @@ export async function login(email: string, password: string): Promise<string> {
     redirect: "manual",
   });
 
-  console.debug(`[Auth] Callback response status: ${callbackResponse.status}`);
   const callbackLocation = callbackResponse.headers.get("location");
-  console.debug(`[Auth] Callback redirect location: ${callbackLocation || "none"}`);
-  
+
   // Extract session cookie (sid) from callback response
   let allCallbackCookies = mergeCookies(
     loginCookies,
     authorizeResponse.headers.get("set-cookie"),
     callbackResponse.headers.get("set-cookie"),
   );
-  console.debug(`[Auth] All callback cookies: ${allCallbackCookies.substring(0, 100)}...`);
-  
+
   let sid = extractSessionCookie(allCallbackCookies);
-  console.debug(`[Auth] Extracted sid from merged cookies: ${sid ? sid.substring(0, 10) + "..." : "FAILED"}`);
 
   if (!sid) {
     // Try to extract from Set-Cookie header directly
@@ -363,28 +341,20 @@ export async function login(email: string, password: string): Promise<string> {
   // Step 5: Follow the redirect to /employee to fully establish the session
   if (callbackLocation) {
     console.debug(`[Auth] Step 5: Following redirect to establish session...`);
-    let currentUrl = callbackLocation.startsWith("http") 
-      ? callbackLocation 
-      : `${SSL_BASE_URL}${callbackLocation}`;
+    let currentUrl = callbackLocation.startsWith("http") ? callbackLocation : `${SSL_BASE_URL}${callbackLocation}`;
     console.debug(`[Auth] Initial redirect URL: ${currentUrl}`);
-    
+
     // Use ALL cookies from the callback, not just sid
     // Merge with standard employee cookies
-    let currentCookies = mergeCookies(
-      allCallbackCookies,
-      "employee_language=en; __bd_fedee=1"
-    );
+    let currentCookies = mergeCookies(allCallbackCookies, "employee_language=en; __bd_fedee=1");
     // Ensure sid is included (in case it wasn't in allCallbackCookies)
     if (!currentCookies.includes("sid=")) {
       currentCookies = mergeCookies(currentCookies, `sid=${sid}`);
     }
-    console.debug(`[Auth] All callback cookies (full): ${allCallbackCookies}`);
-    console.debug(`[Auth] Using cookies for redirect (full): ${currentCookies}`);
-    console.debug(`[Auth] Cookie count: ${currentCookies.split("; ").length} cookies`);
-    
+
     let redirectCount = 0;
     const maxRedirects = 5;
-    
+
     // Follow redirects until we get a 200 response
     while (redirectCount < maxRedirects) {
       const response = await fetch(currentUrl, {
@@ -399,9 +369,7 @@ export async function login(email: string, password: string): Promise<string> {
         },
         redirect: "manual",
       });
-      
-      console.debug(`[Auth] Redirect ${redirectCount + 1} response status: ${response.status}`);
-      
+
       // Update cookies from response - merge with existing cookies
       const setCookieHeader = response.headers.get("set-cookie");
       if (setCookieHeader) {
@@ -409,43 +377,40 @@ export async function login(email: string, password: string): Promise<string> {
         const newSid = extractSessionCookie(setCookieHeader);
         if (newSid) {
           sid = newSid;
-          console.debug(`[Auth] Updated sid from redirect ${redirectCount + 1}: ${sid.substring(0, 10)}...`);
         }
       }
-      
+
       // If we got a 200, check if it's a valid employee page
       if (response.status === 200) {
         const html = await response.text();
-        const isEmployeePage = html.includes("jbc-container") || html.includes("Attendance Book") || html.includes("JOBCAN MyPage");
+        const isEmployeePage =
+          html.includes("jbc-container") || html.includes("Attendance Book") || html.includes("JOBCAN MyPage");
         // More specific login page detection - check for actual login form elements
-        const isLoginPage = 
-          html.includes('id="login-contents"') || 
+        const isLoginPage =
+          html.includes('id="login-contents"') ||
           html.includes('action="/users/sign_in"') ||
           (html.includes("/users/sign_in") && html.includes('type="password"')) ||
-          (currentUrl.includes("/users/sign_in") || currentUrl.includes("/login/pc-employee-global"));
-        console.debug(`[Auth] Final page is valid employee page: ${isEmployeePage}, is login page: ${isLoginPage}`);
+          currentUrl.includes("/users/sign_in") ||
+          currentUrl.includes("/login/pc-employee-global");
         // Only fail if it's definitely a login page AND not an employee page
         if (isLoginPage && !isEmployeePage) {
           throw new Error("Redirected to login page - session establishment failed");
         }
-        if (isEmployeePage) {
-          console.debug(`[Auth] Successfully reached employee page`);
-        } else {
+        if (!isEmployeePage) {
           console.debug(`[Auth] Warning: Got 200 but page doesn't look like employee page`);
         }
         break;
       }
-      
+
       // If we got a redirect, follow it
       if (response.status === 301 || response.status === 302 || response.status === 307 || response.status === 308) {
         const location = response.headers.get("location");
         if (location) {
           // Check if redirecting to login page - this means session failed
           if (location.includes("sign_in") || location.includes("login")) {
-            console.debug(`[Auth] Redirected to login page: ${location}`);
             throw new Error("Redirected to login page - session establishment failed");
           }
-          
+
           // Handle relative URLs
           if (location.startsWith("http")) {
             currentUrl = location;
@@ -457,22 +422,19 @@ export async function login(email: string, password: string): Promise<string> {
             urlObj.pathname = location;
             currentUrl = urlObj.toString();
           }
-          console.debug(`[Auth] Following redirect ${redirectCount + 1} to: ${currentUrl}`);
           redirectCount++;
         } else {
-          console.debug(`[Auth] No location header in redirect, stopping`);
           break;
         }
       } else {
-        console.debug(`[Auth] Unexpected status ${response.status}, stopping`);
         break;
       }
     }
-    
+
     if (redirectCount >= maxRedirects) {
       console.debug(`[Auth] Warning: Reached max redirects (${maxRedirects})`);
     }
-    
+
     // Use the final cookies after following redirects
     allCallbackCookies = currentCookies;
   }
@@ -536,11 +498,10 @@ export async function ensureValidSession(): Promise<string> {
   const now = Date.now();
   const timeUntilExpiry = session.expiry - now;
   const minutesUntilExpiry = Math.floor(timeUntilExpiry / 1000 / 60);
-  console.debug(`[Auth] Session status: expires in ${minutesUntilExpiry} minutes`);
 
   if (timeUntilExpiry < 5 * 60 * 1000) {
     // Session expires soon or expired, attempt re-login if enabled
-    console.debug("[Auth] Session expired or expiring soon, attempting re-login");
+    console.debug(`[Auth] Session expired or expiring soon (${minutesUntilExpiry} min), attempting re-login`);
     if (preferences.autoReloginOnRefreshFailure && preferences.email && preferences.password) {
       try {
         const sid = await login(preferences.email, preferences.password);
@@ -556,7 +517,11 @@ export async function ensureValidSession(): Promise<string> {
     );
   }
 
-  console.debug("[Auth] Session is valid, using existing session");
+  // Only log session status if it's getting close to expiry (less than 60 minutes) or if debugging
+  if (minutesUntilExpiry < 60) {
+    console.debug(`[Auth] Session status: expires in ${minutesUntilExpiry} minutes`);
+  }
+
   return session.sid;
 }
 
@@ -612,4 +577,3 @@ export async function logout(): Promise<void> {
 
   console.debug("[Auth] logout() - Logout complete");
 }
-

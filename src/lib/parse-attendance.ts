@@ -45,6 +45,9 @@ export function parseAttendanceRow(row: any, year: number, month: number): Atten
     return null;
   }
 
+  // Check if row has pending status (jbc-table-warning class)
+  const isPending = row.classList?.contains("jbc-table-warning") || false;
+
   // Extract date from first cell
   const dateCell = cells[0];
   const dateLink = dateCell.querySelector("a");
@@ -137,13 +140,14 @@ export function parseAttendanceRow(row: any, year: number, month: number): Atten
   // Detect unrecognized patterns (only log truly unexpected ones, not empty future dates)
   const hasUnrecognizedStatus = status.some((s) => !KNOWN_STATUS_CODES.has(s));
   const isFutureDate = new Date(date) > new Date();
+  // Holiday work (holiday with Clock In & Out) is expected, not unexpected
+  const isHolidayWork = holidayType && clockIn && clockOut && workingHours;
   const hasUnexpectedData =
-    (holidayType && clockIn && clockOut && !status.length) || // Holiday with work but no status
     (status.includes("A") && (clockIn || clockOut)) || // Absence but has clock times
     (status.includes("PV") && (clockIn || clockOut)); // Paid vacation but has clock times
 
-  // Only log if it's truly unexpected (not just an empty future date)
-  if (hasUnrecognizedStatus || (hasUnexpectedData && !isFutureDate)) {
+  // Only log if it's truly unexpected (not holiday work, not empty future date)
+  if ((hasUnrecognizedStatus || (hasUnexpectedData && !isFutureDate)) && !isHolidayWork) {
     console.debug("[API] Unrecognized attendance pattern:", {
       date,
       dayOfWeek,
@@ -172,7 +176,6 @@ export function parseAttendanceRow(row: any, year: number, month: number): Atten
     break: breakTime,
     status: status.length > 0 ? status : [],
     statusTooltip,
+    isPending,
   };
 }
-
-
