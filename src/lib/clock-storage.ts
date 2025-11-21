@@ -7,7 +7,8 @@ import { STORAGE_KEYS } from "./constants";
  * Get stored field schema
  */
 export async function getStoredFieldSchema(): Promise<string | null> {
-  return await LocalStorage.getItem<string>(STORAGE_KEYS.CLOCK_FIELDS_SCHEMA);
+  const result = await LocalStorage.getItem<string>(STORAGE_KEYS.CLOCK_FIELDS_SCHEMA);
+  return result ?? null;
 }
 
 /**
@@ -30,14 +31,6 @@ export function hasFieldSchemaChanged(detectedFields: ClockField[], storedSchema
 }
 
 /**
- * Get remembered field value
- */
-export async function getRememberedFieldValue(fieldName: string): Promise<string | null> {
-  const key = `${STORAGE_KEYS.CLOCK_FIELD_VALUE_PREFIX}${fieldName}`;
-  return await LocalStorage.getItem<string>(key);
-}
-
-/**
  * Set remembered field value
  */
 export async function setRememberedFieldValue(fieldName: string, value: string): Promise<void> {
@@ -51,18 +44,6 @@ export async function setRememberedFieldValue(fieldName: string, value: string):
 export async function clearFieldValue(fieldName: string): Promise<void> {
   const key = `${STORAGE_KEYS.CLOCK_FIELD_VALUE_PREFIX}${fieldName}`;
   await LocalStorage.removeItem(key);
-}
-
-/**
- * Clear all remembered field values
- */
-export async function clearAllRememberedFields(): Promise<void> {
-  const allItems = await LocalStorage.allItems();
-  for (const key of Object.keys(allItems)) {
-    if (key.startsWith(STORAGE_KEYS.CLOCK_FIELD_VALUE_PREFIX)) {
-      await LocalStorage.removeItem(key);
-    }
-  }
 }
 
 /**

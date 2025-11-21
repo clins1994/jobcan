@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import * as assert from "node:assert";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { parseClockFields, generateFieldSchema, registerClockField } from "../src/lib/clock-fields";
+import { parseClockFields, generateFieldSchema } from "../src/lib/clock-fields";
 
 describe("clock-fields", () => {
   const fixturePath = join(__dirname, "fixtures", "modify-page.html");
@@ -61,28 +61,6 @@ describe("clock-fields", () => {
       const schema2 = generateFieldSchema(fields2);
 
       assert.notStrictEqual(schema1, schema2);
-    });
-  });
-
-  describe("registerClockField", () => {
-    it("should allow registering custom field parsers", () => {
-      const customParser = (element: any, root: any) => {
-        const name = element.getAttribute("name");
-        if (name === "custom_field") {
-          return {
-            name: "custom_field",
-            type: "text" as const,
-            required: false,
-            label: "Custom Field",
-          };
-        }
-        return null;
-      };
-
-      registerClockField("custom_field", customParser);
-
-      // Verify registration (indirectly by checking it would be used)
-      assert.ok(true, "registerClockField should not throw"); // Placeholder - actual test would verify parser is called
     });
   });
 });

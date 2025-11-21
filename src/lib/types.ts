@@ -76,6 +76,7 @@ export interface AttendanceResponse {
  * Clock field definition (re-exported from clock-fields.ts for convenience)
  */
 export type { ClockField } from "./clock-fields";
+import type { ClockField } from "./clock-fields";
 
 /**
  * Data extracted from the modify page
@@ -86,14 +87,6 @@ export interface ModifyPageData {
   employeeId: string;
   availableSpots: Array<{ id: string; name: string }>;
   formFields: ClockField[]; // Form fields detected from the modify page
-}
-
-/**
- * Result of clocking validation
- */
-export interface ClockingValidation {
-  supported: boolean;
-  missingFields: string[];
 }
 
 /**

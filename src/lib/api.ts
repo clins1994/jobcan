@@ -1,9 +1,17 @@
 import { ensureValidSession, clearStoredSession, getSessionCookies } from "./auth";
-import { AttendanceResponse, ModifyPageData, ClockingValidation } from "./types";
+import { AttendanceResponse, ModifyPageData } from "./types";
 import { SSL_BASE_URL } from "./constants";
 import { parseAttendanceHtml } from "./parse-attendance";
 import { parse } from "node-html-parser";
 import { parseClockFields } from "./clock-fields";
+
+/**
+ * Result of clocking validation
+ */
+interface ClockingValidation {
+  supported: boolean;
+  missingFields: string[];
+}
 
 /**
  * Get default headers for API requests
@@ -214,7 +222,7 @@ export async function getModifyPageData(year: number, month: number, day: number
 /**
  * Validate that all required fields are supported
  */
-export function validateClockingSupport(modifyPageData: ModifyPageData): ClockingValidation {
+function validateClockingSupport(modifyPageData: ModifyPageData): ClockingValidation {
   const missingFields: string[] = [];
 
   if (!modifyPageData.token) {

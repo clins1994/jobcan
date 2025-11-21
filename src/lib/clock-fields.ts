@@ -3,7 +3,7 @@ import { HTMLElement, parse } from "node-html-parser";
 /**
  * Clock field types
  */
-export type ClockFieldType = "select" | "text" | "time";
+type ClockFieldType = "select" | "text" | "time";
 
 /**
  * Clock field definition
@@ -21,7 +21,7 @@ export interface ClockField {
  * Field parser function type
  * Takes an HTMLElement and returns a ClockField or null if not applicable
  */
-export type FieldParser = (element: HTMLElement, root: HTMLElement) => ClockField | null;
+type FieldParser = (element: HTMLElement, root: HTMLElement) => ClockField | null;
 
 /**
  * Field registry mapping field names to parsers
@@ -32,7 +32,7 @@ const CLOCK_FIELD_REGISTRY: Map<string, FieldParser> = new Map();
  * Register a new field parser
  * This allows contributors to easily add support for new fields
  */
-export function registerClockField(fieldName: string, parser: FieldParser): void {
+function registerClockField(fieldName: string, parser: FieldParser): void {
   CLOCK_FIELD_REGISTRY.set(fieldName, parser);
 }
 

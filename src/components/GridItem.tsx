@@ -20,38 +20,31 @@ export function GridItem(props: GridItemProps) {
 
   if (assetSource) {
     // Asset file (image or GIF)
-    // For grid items with custom assets (GIFs/images), use object format with value
-    // This is required for Grid.Item to display custom assets correctly
-    content = {
-      value: assetSource,
-    };
+    // For grid items with custom assets (GIFs/images), use string directly
+    content = assetSource;
   } else if (icon) {
     // Icon can be Icon enum, string (asset), or object with source
     if (typeof icon === "object" && "source" in icon) {
       // Already an object with source (and possibly tintColor)
-      // For custom images, use { value: ... } format
+      // For custom images, use string directly or with tooltip
       if (tooltip) {
         content = {
           value: icon.source,
           tooltip,
         };
       } else {
-        content = {
-          value: icon.source,
-        };
+        content = icon.source;
       }
     } else if (typeof icon === "string") {
       // String asset filename
-      // For grid items with custom assets, use object format with value
+      // For grid items with custom assets, use string directly or with tooltip
       if (tooltip) {
         content = {
           value: icon,
           tooltip,
         };
       } else {
-        content = {
-          value: icon,
-        };
+        content = icon;
       }
     } else {
       // Raycast Icon - always include tintColor if provided
